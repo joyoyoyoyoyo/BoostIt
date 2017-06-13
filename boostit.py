@@ -1,5 +1,8 @@
 #!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# coding: utf-8
 import sys
+import unicodedata
 from collections import namedtuple
 
 TrainingFile = namedtuple("TrainingFile",["pos","neg"])
@@ -29,10 +32,21 @@ class Context:
 if __name__ == '__main__':
     # weight_vec = [None] * 100
     cardinality_D = 100
-    weight_vec = (1/cardinality_D for x in range(len(eval("{0} * [None]".format(cardinality_D)))))
+    ℕ_data_points = 200
+    # ⇒, Σ
+    w⃗ = (1/cardinality_D for x in range(len(eval("{0} * [None]".format(cardinality_D)))))
+    # 𝒜: Learning Algorithm
+    # 𝓐 =
+    # 𝓓 = data
+    # "λ
+    # 𝜀
+    # 𝛼
+    # 𝛵: ensemble_size
     # algFunc = None
     # model = weakModel(algFunc, weight_vec)
-    for word in classifier:
+    f = lambda x: sin(x) if 0 <= x <= 2*pi else 0
+
+    for word in w⃗:
         print (word)
 
 
