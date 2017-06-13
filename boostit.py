@@ -19,7 +19,13 @@ class Context:
 
 
 if __name__ == '__main__':
-    ctx = Context(sys.argv)
+
+    classifier = 
+
+    # classifier.runWithContext()
+
+
+    # ctx = Context(sys.argv)
     
     
 
