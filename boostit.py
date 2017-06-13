@@ -20,8 +20,7 @@ class Context:
 
 if __name__ == '__main__':
 
-    classifier = 
-
+    clf =
     # classifier.runWithContext()
 
 
