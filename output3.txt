@@ -1,0 +1,28 @@
+Iteration 0
+Error = 0.42
+Alpha = 0.17
+Factor to increase weights = 0.17
+Factor to decrease weights = 0.17
+Iteration 1
+Error = 0.42
+Alpha = 0.17
+Factor to increase weights = 0.17
+Factor to decrease weights = 0.17
+Iteration 2
+Error = 0.42
+Alpha = 0.17
+Factor to increase weights = 0.17
+Factor to decrease weights = 0.17
+Iteration 3
+Error = 0.42
+Alpha = 0.17
+Factor to increase weights = 0.17
+Factor to decrease weights = 0.17
+Iteration 4
+Error = 0.42
+Alpha = 0.17
+Factor to increase weights = 0.17
+Factor to decrease weights = 0.17
+False positives:	0
+False negatives:	8
+Error rate:	16%

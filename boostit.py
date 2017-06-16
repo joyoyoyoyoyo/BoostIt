@@ -14,15 +14,38 @@ TrainingFile = namedtuple("TrainingFile",["pos","neg"])
 TestingFile = namedtuple("TestingFile", ["pos", "neg"])
 # 𝓓 = namedtuple("𝓓", ["pos", "neg"])
 
-# 𝓓Training
+def load_data(training_file, is_supervised_data=False):
+    '''
+    Dynamically transform a data file into a numpy ndarray with any N features.
+    The first column is ignored because the record number does not add any values as a feature
+    :param training_file:
+    :return:
+    '''
+    with open(training_file) as file:
+        num_points, point_dimensionality = map(int, re.split('\s+', file.readline().strip()))
+    file.close()
 
-# Python 3.0+
-# from abc import ABCMeta, abstractmethod
-# class Abstract(metaclass=ABCMeta):
-#     @abstractmethod
-#     def foo(self):
-#         pass
+    # Data is (n_samples, n_features)
 
+    if is_supervised_data:
+        data = np.loadtxt(training_file, skiprows=1, usecols=range(0, point_dimensionality + 1))
+        predictors = data[:,0:-1]
+        labels = data[:,-1]
+        return predictors, labels, num_points, point_dimensionality
+
+    else:
+        data = np.loadtxt(training_file, skiprows=1, usecols=range(0, point_dimensionality))
+        return data, num_points, point_dimensionality
+
+
+def compute_centroid(data):
+    '''
+    :param data:
+    :return: mean numpy array of column means
+    '''
+    # mean = data.sum(axis=0) / float(len(data))  # element wise divide
+    mean = np.mean(data, axis=0)
+    return mean
 
 class EnsembleMethod(object):
 
@@ -47,7 +70,7 @@ class EnsembleMethod(object):
                 self.pos_training_file)
             self.neg_training_predictors, self.neg_num_training_samples, self.neg_training_dimensionality = self.load_data(
                 self.neg_training_file)
-            training_predictors = np.concatenate((self.pos_training_predictors, self.neg_training_predictors), axis=0)
+            self.training_predictors = np.concatenate((self.pos_training_predictors, self.neg_training_predictors), axis=0)
 
             self.pos_testing_predictors, self.pos_num_testing_samples, self.pos_testing_dimensionality = self.load_data(self.pos_testing_file)
             self.neg_testing_predictors, self.neg_num_testing_samples, self.neg_testing_dimensionality = self.load_data(self.neg_testing_file)
@@ -66,16 +89,6 @@ class EnsembleMethod(object):
 
             self.num_training = len(self.y_training_targets)
             self.num_testing = len(self.y_testing_targets)
-
-            # clf_model = PerceptronModel(training_predictors, y_training_targets, num_training,
-            #                             kernelmodel=('rbf', sigma))
-            # similarities = clf_model.parameterize_RBF(training_predictors, training_predictors)
-            # clf_model.converge_training_weights(clf_model.alphas)
-            # predicted = clf_model.predict(testing_predictors, y_testing_targets)
-            #
-            # alphas_list = ' '.join('{0}'.format(v, i) for i, v in enumerate(clf_model.alphas))
-            # print
-            # 'Alphas:\t' + alphas_list
 
         def interpret_output_filename(self, file_with_digits):
             try:
@@ -101,9 +114,40 @@ class EnsembleMethod(object):
             data = np.loadtxt(training_file, skiprows=1, usecols=range(0, point_dimensionality))
             return data, num_points, point_dimensionality
 
+        def _load_data(training_file, is_supervised_data=False):
+            '''
+            Dynamically transform a data file into a numpy ndarray with any N features.
+            The first column is ignored because the record number does not add any values as a feature
+            :param training_file:
+            :return:
+            '''
+            with open(training_file) as file:
+                num_points, point_dimensionality = map(int, re.split('\s+', file.readline().strip()))
+            file.close()
+
+            # Data is (n_samples, n_features)
+
+            if is_supervised_data:
+                data = np.loadtxt(training_file, skiprows=1, usecols=range(0, point_dimensionality + 1))
+                predictors = data[:, 0:-1]
+                labels = data[:, -1]
+                return predictors, labels, num_points, point_dimensionality
+
+            else:
+                data = np.loadtxt(training_file, skiprows=1, usecols=range(0, point_dimensionality))
+                return data, num_points, point_dimensionality
+
+        def loadSimpData(self):
+            self.datMat = np.matrix([[1., 2.1],
+                             [2., 1.1],
+                             [1.3, 1.],
+                             [1., 1.],
+                             [2., 1.]])
+            self.classLabels = [1.0, 1.0, -1.0, -1.0, 1.0]
+            return self.datMat, self.classLabels
+
     class BoostIt:
         def __init__(self, context):
-            print('initializing')
             self.w⃗ = None
             self.𝛵 = context.ensemble_size
             self.𝓓 = [context.training_files, context.testing_files]
@@ -113,9 +157,8 @@ class EnsembleMethod(object):
 
 
         def boosting(self, 𝓓, 𝛵, 𝒜):
-            w⃗ = cardinality_D * [float(1)/2]
+            w⃗ = len(𝓓) * [float(1)/2]
             # w⃗ = (1 / cardinality_D for x in range(len(eval("{0} * [None]".format(cardinality_D)))))
-            print('running boost')
             𝜀 = {}
             𝛼 = {}
             𝛭 = {}
@@ -124,58 +167,107 @@ class EnsembleMethod(object):
                 𝜀[t] = 𝛭.weightedError()
                 if 𝜀[t] >= float(1)/2:
                    𝛵 = t - 1; break
-                𝛼[t] = (float (1)/2) * np.log((1 - 𝜀[t]) / 𝜀[t])
+                𝛼[t] = (float (1)/2) * np.log((1 - 𝜀[t]) / max(𝜀[t],1e-16))
                 for x in 𝓓['misclassified']:
                     w⃗[t+1] = w⃗[t]/float(2 * 𝜀[t])
                 for x in 𝓓['correctly_classified']:
                     w⃗[t+1] = w⃗[t]/float(2) * (1-𝜀[t])
             return 𝛭
 
+def trainEnsemble(weights):
+    global clusterPosTrain, clusterNegTrain
+    top = np.array(np.array(weights[0:int(len(weights)/2)]))
+    bottom = np.array(weights[int(len(weights)/2):])
+    clusterPosTrain = []
+    clusterNegTrain = []
+    for i in range(ctx.pos_training_dimensionality):
+        clusterPosTrain.append(compute_centroid(ctx.pos_training_predictors[:,i]*top))
+        clusterNegTrain.append(compute_centroid(np.multiply(ctx.neg_training_predictors[:,i],bottom)))
+    clusterPosTrain = np.array(clusterPosTrain)
+    clusterNegTrain = np.array(clusterNegTrain)
 
+    varianceTrain = np.subtract(clusterPosTrain, clusterNegTrain)
+    W_train = (clusterPosTrain - clusterNegTrain)
+    T_train = 0.5 * np.inner(clusterPosTrain + clusterNegTrain, (clusterPosTrain - clusterNegTrain))
+    T_train_array = np.full(ctx.num_training, fill_value=T_train, dtype=float)
 
+    clusterPosTest = []
+    clusterNegTest = []
+    top = np.array(np.array(weights[0:int(len(weights) / 2)]))
+    bottom = np.array(weights[int(len(weights) / 2):])
+    for i in range(ctx.pos_training_dimensionality):
+        clusterPosTest.append(compute_centroid(ctx.pos_testing_predictors[:,i]*top))
+        clusterNegTest.append(compute_centroid(np.multiply(ctx.neg_testing_predictors[:,i],bottom)))
+    clusterPosTest = np.array(clusterPosTest)
+    clusterNegTest = np.array(clusterNegTest)
 
-            # class Pseudo:
-    # @args: Data type, ensemble size T, learning algorithm A
-    # @return: weighted ensemble of models T
-    # def __init__(self, data, ensemble_size, learning_algorithm):
-        # vec = [float(1) / data.size] * data.size  # Non-lazy eval
-        # weight_vec = (1/2 for x in range(data.size))
-            # ½ = float(1) / 2
-            # ‖
+    W_test = (clusterPosTest - clusterNegTest)
 
+    testSample = np.inner(ctx.testing_predictors, W_test) - T_train
+    X_test_diff = testSample - T_train_array
+    errors_vector = X_test_diff < 0
+    errors = errors_vector.astype(int)
+    error = float(sum(errors)) / ctx.num_training
+    alpha = 0.5 * np.log((1.0 - error) / max(error,1e-16))
+
+    return weights, error, errors_vector, alpha
+
+def boost(margin_error, errors_vector, weights, alpha):
+    for i, error in enumerate(errors_vector):
+        if error:
+            alpha = 0.5 * np.log((1.0 - margin_error) / max(margin_error, 1e-16))
+            weights[i] += alpha
+        else:
+            alpha = 0.5 * np.log((float(margin_error)) / max(margin_error, 1e-16))
+            weights[i] -= alpha
+    return weights
 
 if __name__ == '__main__':
     # weight_vec = [None] * 100
     ctx = EnsembleMethod.Context(sys.argv)
-    boostIt = EnsembleMethod.BoostIt(ctx)
-    boostIt.boosting()
-    # boostIt = BoostIt(sys.argv)
+    weights = np.full(ctx.num_training, fill_value=1, dtype=int)
 
-    # cardinality_D = 100
-    # ℕ_data_points = 200
-    # ⇒, Σ
+    for i in range(int(ctx.ensemble_size)):
+        weights, error, errors_vector, alpha = trainEnsemble(weights)
+        print("Iteration {0}".format(i))
+        print("Error = {0:.2f}".format(error))
+        print("Alpha = {0:.2f}".format(alpha))
+        print("Factor to increase weights = {0:.2f}".format(alpha))
+        print("Factor to decrease weights = {0:.2f}".format(alpha))
+        boost(error, errors_vector, weights, alpha)
 
-    # 𝛵: ensemble_size
-    # 𝛵 = boostIt.𝛵
+    clusterPosTest = []
+    clusterNegTest = []
+    top = np.array(np.array(weights[0:int(len(weights) / 2)]))
+    bottom = np.array(weights[int(len(weights) / 2):])
+    for i in range(ctx.pos_training_dimensionality):
+        clusterPosTest.append(compute_centroid(ctx.pos_testing_predictors[:, i] * top))
+        clusterNegTest.append(compute_centroid(np.multiply(ctx.neg_testing_predictors[:, i], bottom)))
+    clusterPosTest = np.array(clusterPosTest)
+    clusterNegTest = np.array(clusterNegTest)
 
+    W_test = (clusterPosTest - clusterNegTest)
+    T_test = 0.5 * np.inner(clusterPosTest + clusterNegTest, (clusterPosTest - clusterNegTest))
+    T_test_array = np.full(ctx.num_testing, fill_value=T_test, dtype=float)
 
-    # 𝒜: Learning Algorithm
-    # 𝓐 =
-    # 𝓓 = data
-    # "λ
-    # 𝜀
-    # 𝛼
-    # 𝛵: ensemble_size
-    # algFunc = None
-    # model = weakModel(algFunc, weight_vec)
-    # f = lambda x: sin(x) if 0 <= x <= 2*pi else 0
+    testSample = np.inner(ctx.testing_predictors, W_test) - T_test
+    X_test_diff = testSample - T_test_array
+    errors_test_vector = X_test_diff < 0
+    correct_test_vector = np.array(X_test_diff > 0)
+    errors_test = errors_test_vector.astype(int)
+    error = float(sum(errors_test)) / ctx.num_training
 
-    # for word in w⃗:
-    #     print (word)
-    # classifier.runWithContext()
+    ground_truth_targets = np.array(ctx.y_testing_targets)
 
-
-    # ctx = Context(sys.argv)
-
-
-# /home/angel/Courses/cs165b/machine-learning-cs165b-assignment5/boostit.py
+    # pos_hits = np.logical_not(np.logical_xor(predicted, ground_truth_targets))
+    false_positives = 0
+    false_negatives = 0
+    for i in range(len(errors_test_vector)):
+        if errors_test[i] and ground_truth_targets[i] == 1:
+            false_positives += 1
+        if errors_test[i] and ground_truth_targets[i] == -1:
+            false_negatives += 1
+    print('False positives:\t{0}'.format(false_positives))
+    print('False negatives:\t{0}'.format(false_negatives))
+    error_rate = sum(errors_test) / float(ctx.num_testing)
+    print('Error rate:\t{0}%'.format(int(error_rate * 100)))
